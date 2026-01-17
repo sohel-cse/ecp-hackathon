@@ -9,6 +9,7 @@ const WEAK_PASSWORDS = ['password', '1234567890', 'admin123', 'password123'];
 
 type UserValidationData = Partial<RegisterUserRequestDto> & Partial<UpdateUserRequestDto>;
 
+// Atomic Validators (Leaf nodes)
 export class NameValidator implements IValidator<UserValidationData> {
     async validate(data: UserValidationData): Promise<void> {
         if (data.firstName !== undefined) {
@@ -99,10 +100,8 @@ export class PasswordValidator implements IValidator<UserValidationData> {
         const email = data.email?.trim().toLowerCase() || '';
         const phone = data.phoneNumber ? data.phoneNumber.replace(/\D/g, '') : undefined;
 
-        // Length
         if (password.length < 10) throw new Error('Password must be at least 10 characters long');
 
-        // Complexity
         const hasUpper = /[A-Z]/.test(password);
         const hasLower = /[a-z]/.test(password);
         const hasNum = /[0-9]/.test(password);
@@ -112,13 +111,11 @@ export class PasswordValidator implements IValidator<UserValidationData> {
             throw new Error('Password must include uppercase, lowercase, number, and special character');
         }
 
-        // Email prefix check
         const emailPrefix = email.split('@')[0];
         if (emailPrefix && password.toLowerCase().includes(emailPrefix)) {
             throw new Error('Password cannot contain your email identifier');
         }
 
-        // Phone substring check
         if (phone) {
             const phoneSuffix = phone.substring(phone.length - 6);
             if (password.includes(phoneSuffix)) {
@@ -126,9 +123,47 @@ export class PasswordValidator implements IValidator<UserValidationData> {
             }
         }
 
-        // Weak password list
         if (WEAK_PASSWORDS.includes(password.toLowerCase())) {
             throw new Error('Password is too common. Please choose a stronger one.');
+        }
+    }
+}
+
+// Composite Validators
+export class UserRegistrationValidator implements IValidator<RegisterUserRequestDto> {
+    private validators: IValidator<UserValidationData>[];
+
+    constructor(userRepository: IUserRepository) {
+        this.validators = [
+            new NameValidator(),
+            new EmailValidator(userRepository),
+            new PhoneValidator(userRepository),
+            new AgeValidator(),
+            new PasswordValidator()
+        ];
+    }
+
+    async validate(data: RegisterUserRequestDto): Promise<void> {
+        for (const validator of this.validators) {
+            await validator.validate(data);
+        }
+    }
+}
+
+export class UserUpdateValidator implements IValidator<UpdateUserRequestDto> {
+    private validators: IValidator<UserValidationData>[];
+
+    constructor(userRepository: IUserRepository) {
+        this.validators = [
+            new NameValidator(),
+            new PhoneValidator(userRepository),
+            new AgeValidator()
+        ];
+    }
+
+    async validate(data: UpdateUserRequestDto): Promise<void> {
+        for (const validator of this.validators) {
+            await validator.validate(data);
         }
     }
 }

@@ -1,5 +1,4 @@
 import { UserService } from './packages/services/src/index';
-import { NameValidator, EmailValidator, PhoneValidator, AgeValidator, PasswordValidator } from './packages/services/src/validators';
 import { IUserRepository, User } from './packages/shared/src/index';
 
 class MockUserRepository implements IUserRepository {
@@ -43,22 +42,15 @@ class MockUserRepository implements IUserRepository {
 }
 
 async function verify() {
-    console.log('--- Verifying Enhanced Register/Update Flow ---');
+    console.log('--- Verifying Composite Validator Refactoring ---');
 
     const repo = new MockUserRepository();
-    const validators = [
-        new NameValidator(),
-        new EmailValidator(repo),
-        new PhoneValidator(repo),
-        new AgeValidator(),
-        new PasswordValidator()
-    ];
-    const service = new UserService(repo, validators);
+    const service = new UserService(repo); // No validators passed!
 
     let registeredUser: any;
 
     try {
-        console.log('1. Registering user...');
+        console.log('1. Registering user (Testing UserRegistrationValidator)...');
         registeredUser = await service.registerUser({
             username: 'jdoe',
             email: 'john@example.com',
@@ -70,15 +62,14 @@ async function verify() {
         });
         console.log('Success:', registeredUser);
 
-        console.log('\n2. Updating profile (valid change)...');
+        console.log('\n2. Updating profile (Testing UserUpdateValidator)...');
         const updated = await service.updateUser(registeredUser.id, {
             firstName: 'Jonathan',
             displayName: 'John Boy'
         });
         console.log('Updated Success:', updated);
 
-        console.log('\n3. Updating phone (duplicate check)...');
-        // Register another user
+        console.log('\n3. Testing specific update validation (Phone duplicate)...');
         await service.registerUser({
             username: 'another',
             email: 'another@example.com',
@@ -88,7 +79,6 @@ async function verify() {
             password: 'Password123!'
         });
 
-        // Try to update jdoe with another's phone
         console.log('Attempting to update phone to duplicate 01811223344...');
         await service.updateUser(registeredUser.id, { phoneNumber: '01811223344' });
     } catch (error: any) {
@@ -96,8 +86,8 @@ async function verify() {
     }
 
     try {
-        console.log('\n4. Invalid name in update...');
-        await service.updateUser(registeredUser.id, { firstName: 'J123' });
+        console.log('\n4. Testing invalid field in update...');
+        await service.updateUser(registeredUser.id, { firstName: '' });
     } catch (error: any) {
         console.log('Caught expected error (Update Name):', error.message);
     }

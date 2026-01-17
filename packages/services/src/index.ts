@@ -5,21 +5,22 @@ import {
     RegisterUserRequestDto,
     UpdateUserRequestDto,
     UserResponseDto,
-    IValidator,
     User
 } from '@user-mgmt/shared';
+import { UserRegistrationValidator, UserUpdateValidator } from './validators';
 
 export class UserService implements IUserService {
-    constructor(
-        private userRepository: IUserRepository,
-        private validators: IValidator<Partial<RegisterUserRequestDto> & Partial<UpdateUserRequestDto>>[] = []
-    ) { }
+    private registrationValidator: UserRegistrationValidator;
+    private updateValidator: UserUpdateValidator;
+
+    constructor(private userRepository: IUserRepository) {
+        this.registrationValidator = new UserRegistrationValidator(userRepository);
+        this.updateValidator = new UserUpdateValidator(userRepository);
+    }
 
     async registerUser(request: RegisterUserRequestDto): Promise<UserResponseDto> {
-        // 1. Run Validators
-        for (const validator of this.validators) {
-            await validator.validate(request);
-        }
+        // 1. Run Composite Registration Validator
+        await this.registrationValidator.validate(request);
 
         // 2. Data Normalization
         const email = request.email.trim().toLowerCase();
@@ -58,14 +59,10 @@ export class UserService implements IUserService {
             throw new Error('User not found');
         }
 
-        // 2. Validate partial data using existing validators
-        // We pass the partial request to validators which now handle partial data
-        for (const validator of this.validators) {
-            await validator.validate(request);
-        }
+        // 2. Run Composite Update Validator
+        await this.updateValidator.validate(request);
 
-        // 3. Additional Business Rules for Update
-        // Check phone uniqueness if phone is being changed
+        // 3. Additional Business Rules for Update (Cross-field/Identity)
         if (request.phoneNumber !== undefined && request.phoneNumber !== existingUser.phoneNumber) {
             if (request.phoneNumber) {
                 const normalizedNewPhone = this.normalizePhone(request.phoneNumber);

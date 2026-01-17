@@ -1,14 +1,7 @@
 import express, { Request, Response } from 'express';
 import { MongoClient } from 'mongodb';
 import { MongoUserRepository } from '@user-mgmt/repository';
-import {
-    UserService,
-    NameValidator,
-    EmailValidator,
-    PhoneValidator,
-    AgeValidator,
-    PasswordValidator
-} from '@user-mgmt/services';
+import { UserService } from '@user-mgmt/services';
 import { RegisterUserRequestDto, UpdateUserRequestDto } from '@user-mgmt/shared';
 
 const app = express();
@@ -25,17 +18,7 @@ async function bootstrap() {
 
         // Dependency Injection
         const userRepository = new MongoUserRepository(db);
-
-        // Setup Validators for common use
-        const validators = [
-            new NameValidator(),
-            new EmailValidator(userRepository),
-            new PhoneValidator(userRepository),
-            new AgeValidator(),
-            new PasswordValidator()
-        ];
-
-        const userService = new UserService(userRepository, validators);
+        const userService = new UserService(userRepository);
 
         // Endpoints
         app.post('/api/users/register', async (req: Request, res: Response) => {
