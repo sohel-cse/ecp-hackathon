@@ -92,6 +92,25 @@ async function verify() {
         console.log('Caught expected error (Update Name):', error.message);
     }
 
+    try {
+        console.log('\n5. Testing user deletion...');
+        await service.deleteUser(registeredUser.id);
+        console.log('Delete Success');
+
+        console.log('Attempting to fetch deleted user...');
+        const user = await service.getUserById(registeredUser.id);
+        if (user === null) {
+            console.log('Correct: User not found after deletion');
+        } else {
+            console.log('Error: User still found after deletion');
+        }
+
+        console.log('Attempting to update deleted user...');
+        await service.updateUser(registeredUser.id, { firstName: 'Ghost' });
+    } catch (error: any) {
+        console.log('Caught expected error (Update Deleted):', error.message);
+    }
+
     console.log('\n--- Verification Complete ---');
 }
 

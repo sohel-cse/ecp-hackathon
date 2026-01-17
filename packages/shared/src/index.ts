@@ -64,6 +64,7 @@ export interface IUserRepository extends IRepository<User> {
 export interface IUserService {
     registerUser(request: RegisterUserRequestDto): Promise<UserResponseDto>;
     updateUser(id: string, request: UpdateUserRequestDto): Promise<UserResponseDto>;
+    deleteUser(id: string): Promise<boolean>;
     getUserById(id: string): Promise<UserResponseDto | null>;
     toggleUserStatus(id: string): Promise<boolean>;
 }

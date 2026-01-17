@@ -92,6 +92,15 @@ export class UserService implements IUserService {
         return this.mapToResponse(updatedUser!);
     }
 
+    async deleteUser(id: string): Promise<boolean> {
+        const user = await this.userRepository.findById(id);
+        if (!user || user.isDeleted) {
+            throw new Error('User not found');
+        }
+
+        return this.userRepository.delete(id);
+    }
+
     async getUserById(id: string): Promise<UserResponseDto | null> {
         const user = await this.userRepository.findById(id);
         if (!user || user.isDeleted) return null;

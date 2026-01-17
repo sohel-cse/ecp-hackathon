@@ -60,6 +60,16 @@ async function bootstrap() {
             }
         });
 
+        app.delete('/api/users/:id', async (req: Request, res: Response) => {
+            try {
+                await userService.deleteUser(req.params.id);
+                res.status(204).send();
+            } catch (error: any) {
+                const status = error.message === 'User not found' ? 404 : 400;
+                res.status(status).json({ error: error.message });
+            }
+        });
+
         app.get('/api/users/:id', async (req: Request, res: Response) => {
             try {
                 const user = await userService.getUserById(req.params.id);
