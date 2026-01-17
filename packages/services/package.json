@@ -1,0 +1,12 @@
+{
+    "name": "@user-mgmt/services",
+    "version": "1.0.0",
+    "private": true,
+    "main": "dist/index.js",
+    "scripts": {
+        "build": "tsc"
+    },
+    "dependencies": {
+        "@user-mgmt/shared": "*"
+    }
+}
