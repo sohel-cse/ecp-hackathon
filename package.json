@@ -8,7 +8,7 @@
   "scripts": {
     "build": "tsc -b",
     "watch": "tsc -b -w",
-    "api:start": "npm start -w @user-mgmt/api",
+    "api:start": "ts-node -r tsconfig-paths/register apps/api/src/index.ts",
     "dev": "concurrently \"npm run watch\" \"nodemon --watch 'apps/api/src/**/*.ts' --exec 'npm run api:start'\"",
     "test": "npm run test --workspaces"
   },
@@ -17,6 +17,7 @@
     "concurrently": "^9.2.1",
     "nodemon": "^3.1.11",
     "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
     "typescript": "^5.3.3"
   }
 }

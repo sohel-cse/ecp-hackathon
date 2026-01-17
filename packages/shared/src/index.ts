@@ -26,6 +26,15 @@ export interface RegisterUserRequestDto {
     displayName?: string;
 }
 
+export interface UpdateUserRequestDto {
+    username?: string;
+    phoneNumber?: string;
+    firstName?: string;
+    lastName?: string;
+    dob?: string; // ISO string
+    displayName?: string;
+}
+
 export interface UserResponseDto {
     id: string;
     username: string;
@@ -54,6 +63,12 @@ export interface IUserRepository extends IRepository<User> {
 // User Service Interface
 export interface IUserService {
     registerUser(request: RegisterUserRequestDto): Promise<UserResponseDto>;
+    updateUser(id: string, request: UpdateUserRequestDto): Promise<UserResponseDto>;
     getUserById(id: string): Promise<UserResponseDto | null>;
     toggleUserStatus(id: string): Promise<boolean>;
+}
+
+// Validator Interface
+export interface IValidator<T> {
+    validate(data: T): void | Promise<void>;
 }

@@ -3,52 +3,35 @@ import {
     IUserService,
     IUserRepository,
     RegisterUserRequestDto,
+    UpdateUserRequestDto,
     UserResponseDto,
+    IValidator,
     User
 } from '@user-mgmt/shared';
 
-const WEAK_PASSWORDS = ['password', '1234567890', 'admin123', 'password123'];
-
 export class UserService implements IUserService {
-    constructor(private userRepository: IUserRepository) { }
+    constructor(
+        private userRepository: IUserRepository,
+        private validators: IValidator<Partial<RegisterUserRequestDto> & Partial<UpdateUserRequestDto>>[] = []
+    ) { }
 
     async registerUser(request: RegisterUserRequestDto): Promise<UserResponseDto> {
-        // 1. Data Normalization
+        // 1. Run Validators
+        for (const validator of this.validators) {
+            await validator.validate(request);
+        }
+
+        // 2. Data Normalization
         const email = request.email.trim().toLowerCase();
         const phoneNumber = request.phoneNumber ? this.normalizePhone(request.phoneNumber) : undefined;
         const firstName = request.firstName.trim();
         const lastName = request.lastName.trim();
 
-        // 2. Input Validation
-        this.validateName('First name', firstName);
-        this.validateName('Last name', lastName);
-        this.validateAge(request.dob);
-        this.validatePassword(request.password, email, phoneNumber);
-
-        // 3. Uniqueness Checks (Aware of soft-deleted users)
-        const userByEmail = await this.userRepository.findByEmail(email);
-        if (userByEmail) {
-            if (userByEmail.isDeleted) {
-                throw new Error('This email belongs to a deleted account. Please contact an admin to restore it.');
-            }
-            throw new Error('Email already in use');
-        }
-
-        if (phoneNumber) {
-            const userByPhone = await this.userRepository.findByPhoneNumber(phoneNumber);
-            if (userByPhone) {
-                if (userByPhone.isDeleted) {
-                    throw new Error('This phone number belongs to a deleted account. Please contact an admin to restore it.');
-                }
-                throw new Error('Phone number already in use');
-            }
-        }
-
-        // 4. Secure Hashing
+        // 3. Secure Hashing
         const saltRounds = 12;
         const passwordHash = await bcrypt.hash(request.password, saltRounds);
 
-        // 5. Create Entity
+        // 4. Create Entity
         const user: User = {
             username: request.username,
             email,
@@ -68,6 +51,50 @@ export class UserService implements IUserService {
         return this.mapToResponse(createdUser);
     }
 
+    async updateUser(id: string, request: UpdateUserRequestDto): Promise<UserResponseDto> {
+        // 1. Fetch existing user
+        const existingUser = await this.userRepository.findById(id);
+        if (!existingUser || existingUser.isDeleted) {
+            throw new Error('User not found');
+        }
+
+        // 2. Validate partial data using existing validators
+        // We pass the partial request to validators which now handle partial data
+        for (const validator of this.validators) {
+            await validator.validate(request);
+        }
+
+        // 3. Additional Business Rules for Update
+        // Check phone uniqueness if phone is being changed
+        if (request.phoneNumber !== undefined && request.phoneNumber !== existingUser.phoneNumber) {
+            if (request.phoneNumber) {
+                const normalizedNewPhone = this.normalizePhone(request.phoneNumber);
+                const userByPhone = await this.userRepository.findByPhoneNumber(normalizedNewPhone);
+                if (userByPhone && userByPhone.id !== id) {
+                    throw new Error('Phone number already in use by another user');
+                }
+            }
+        }
+
+        // 4. Prepare update object (Normalization)
+        const updates: Partial<User> = {};
+        if (request.username !== undefined) updates.username = request.username;
+        if (request.firstName !== undefined) updates.firstName = request.firstName.trim();
+        if (request.lastName !== undefined) updates.lastName = request.lastName.trim();
+        if (request.displayName !== undefined) updates.displayName = request.displayName;
+        if (request.dob !== undefined) updates.dob = request.dob ? new Date(request.dob) : undefined;
+        if (request.phoneNumber !== undefined) {
+            updates.phoneNumber = request.phoneNumber ? this.normalizePhone(request.phoneNumber) : undefined;
+        }
+
+        // 5. Apply updates
+        await this.userRepository.update(id, updates);
+
+        // 6. Return updated user
+        const updatedUser = await this.userRepository.findById(id);
+        return this.mapToResponse(updatedUser!);
+    }
+
     async getUserById(id: string): Promise<UserResponseDto | null> {
         const user = await this.userRepository.findById(id);
         if (!user || user.isDeleted) return null;
@@ -82,72 +109,12 @@ export class UserService implements IUserService {
     }
 
     private normalizePhone(phone: string): string {
-        // Simple E.164 normalization for Bangladesh as example
         let digits = phone.replace(/\D/g, '');
         if (digits.startsWith('88')) digits = digits.substring(2);
         if (digits.startsWith('0')) digits = digits.substring(1);
 
         if (digits.length !== 10) throw new Error('Invalid phone number format for Bangladesh');
         return `+880${digits}`;
-    }
-
-    private validateName(field: string, name: string) {
-        if (name.length < 2 || name.length > 50) {
-            throw new Error(`${field} must be between 2 and 50 characters`);
-        }
-        const nameRegex = /^[a-zA-Z\s\-']+$/;
-        if (!nameRegex.test(name)) {
-            throw new Error(`${field} contains invalid characters`);
-        }
-    }
-
-    private validateAge(dobString?: string) {
-        if (!dobString) return;
-        const dob = new Date(dobString);
-        const ageLimit = 13;
-        const today = new Date();
-        const age = today.getFullYear() - dob.getFullYear();
-        const monthDiff = today.getMonth() - dob.getMonth();
-
-        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
-            if (age - 1 < ageLimit) throw new Error('User must be at least 13 years old');
-        } else if (age < ageLimit) {
-            throw new Error('User must be at least 13 years old');
-        }
-    }
-
-    private validatePassword(password: string, email: string, phone?: string) {
-        // Length
-        if (password.length < 10) throw new Error('Password must be at least 10 characters long');
-
-        // Complexity
-        const hasUpper = /[A-Z]/.test(password);
-        const hasLower = /[a-z]/.test(password);
-        const hasNum = /[0-9]/.test(password);
-        const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
-
-        if (!hasUpper || !hasLower || !hasNum || !hasSpecial) {
-            throw new Error('Password must include uppercase, lowercase, number, and special character');
-        }
-
-        // Email prefix check
-        const emailPrefix = email.split('@')[0];
-        if (password.toLowerCase().includes(emailPrefix)) {
-            throw new Error('Password cannot contain your email identifier');
-        }
-
-        // Phone substring check
-        if (phone) {
-            const phoneSuffix = phone.substring(phone.length - 6);
-            if (password.includes(phoneSuffix)) {
-                throw new Error('Password cannot contain part of your phone number');
-            }
-        }
-
-        // Weak password list
-        if (WEAK_PASSWORDS.includes(password.toLowerCase())) {
-            throw new Error('Password is too common. Please choose a stronger one.');
-        }
     }
 
     private mapToResponse(user: User): UserResponseDto {
@@ -162,3 +129,5 @@ export class UserService implements IUserService {
         };
     }
 }
+
+export * from './validators';

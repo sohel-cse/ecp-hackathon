@@ -1,8 +1,15 @@
 import express, { Request, Response } from 'express';
 import { MongoClient } from 'mongodb';
 import { MongoUserRepository } from '@user-mgmt/repository';
-import { UserService } from '@user-mgmt/services';
-import { RegisterUserRequestDto } from '@user-mgmt/shared';
+import {
+    UserService,
+    NameValidator,
+    EmailValidator,
+    PhoneValidator,
+    AgeValidator,
+    PasswordValidator
+} from '@user-mgmt/services';
+import { RegisterUserRequestDto, UpdateUserRequestDto } from '@user-mgmt/shared';
 
 const app = express();
 app.use(express.json());
@@ -18,7 +25,17 @@ async function bootstrap() {
 
         // Dependency Injection
         const userRepository = new MongoUserRepository(db);
-        const userService = new UserService(userRepository);
+
+        // Setup Validators for common use
+        const validators = [
+            new NameValidator(),
+            new EmailValidator(userRepository),
+            new PhoneValidator(userRepository),
+            new AgeValidator(),
+            new PasswordValidator()
+        ];
+
+        const userService = new UserService(userRepository, validators);
 
         // Endpoints
         app.post('/api/users/register', async (req: Request, res: Response) => {
@@ -37,6 +54,36 @@ async function bootstrap() {
                 res.status(201).json(result);
             } catch (error: any) {
                 res.status(400).json({ error: error.message });
+            }
+        });
+
+        app.put('/api/users/:id', async (req: Request, res: Response) => {
+            try {
+                const dto: UpdateUserRequestDto = req.body;
+
+                // Tier 1 Check: Prevent updating immutable fields if sent in body
+                const forbidden = ['email', 'password', 'isDeleted', 'id', 'isEnabled', 'createdAt'];
+                for (const field of forbidden) {
+                    if ((dto as any)[field] !== undefined) {
+                        return res.status(400).json({ error: `Updating ${field} is not allowed via this endpoint` });
+                    }
+                }
+
+                const result = await userService.updateUser(req.params.id, dto);
+                res.json(result);
+            } catch (error: any) {
+                const status = error.message === 'User not found' ? 404 : 400;
+                res.status(status).json({ error: error.message });
+            }
+        });
+
+        app.get('/api/users/:id', async (req: Request, res: Response) => {
+            try {
+                const user = await userService.getUserById(req.params.id);
+                if (!user) return res.status(404).json({ error: 'User not found' });
+                res.json(user);
+            } catch (error: any) {
+                res.status(500).json({ error: error.message });
             }
         });
 

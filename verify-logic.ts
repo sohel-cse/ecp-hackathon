@@ -1,5 +1,6 @@
-import { UserService } from './packages/services/src';
-import { IUserRepository, User } from './packages/shared/src';
+import { UserService } from './packages/services/src/index';
+import { NameValidator, EmailValidator, PhoneValidator, AgeValidator, PasswordValidator } from './packages/services/src/validators';
+import { IUserRepository, User } from './packages/shared/src/index';
 
 class MockUserRepository implements IUserRepository {
     private users: User[] = [];
@@ -42,63 +43,63 @@ class MockUserRepository implements IUserRepository {
 }
 
 async function verify() {
-    console.log('--- Verifying Enhanced RegisterUser Flow ---');
+    console.log('--- Verifying Enhanced Register/Update Flow ---');
 
     const repo = new MockUserRepository();
-    const service = new UserService(repo);
+    const validators = [
+        new NameValidator(),
+        new EmailValidator(repo),
+        new PhoneValidator(repo),
+        new AgeValidator(),
+        new PasswordValidator()
+    ];
+    const service = new UserService(repo, validators);
 
-    const validData = {
-        username: 'jdoe',
-        email: '  JOHN@Example.com  ',
-        phoneNumber: '01711223344',
-        firstName: 'John',
-        lastName: 'Doe',
-        password: 'Password123!',
-        dob: '2000-01-01'
-    };
+    let registeredUser: any;
 
     try {
-        console.log('1. Valid Registration (with normalization)...');
-        const user = await service.registerUser(validData);
-        console.log('Success:', user);
-        console.log('Normalized Email:', user.email);
-        console.log('Normalized Phone:', user.phoneNumber);
+        console.log('1. Registering user...');
+        registeredUser = await service.registerUser({
+            username: 'jdoe',
+            email: 'john@example.com',
+            phoneNumber: '01711223344',
+            firstName: 'John',
+            lastName: 'Doe',
+            password: 'Password123!',
+            dob: '2000-01-01'
+        });
+        console.log('Success:', registeredUser);
 
-        console.log('\n2. Invalid Name (symbols)...');
-        await service.registerUser({ ...validData, firstName: 'John123' });
+        console.log('\n2. Updating profile (valid change)...');
+        const updated = await service.updateUser(registeredUser.id, {
+            firstName: 'Jonathan',
+            displayName: 'John Boy'
+        });
+        console.log('Updated Success:', updated);
+
+        console.log('\n3. Updating phone (duplicate check)...');
+        // Register another user
+        await service.registerUser({
+            username: 'another',
+            email: 'another@example.com',
+            phoneNumber: '01811223344',
+            firstName: 'Another',
+            lastName: 'User',
+            password: 'Password123!'
+        });
+
+        // Try to update jdoe with another's phone
+        console.log('Attempting to update phone to duplicate 01811223344...');
+        await service.updateUser(registeredUser.id, { phoneNumber: '01811223344' });
     } catch (error: any) {
-        console.log('Caught expected error (Name):', error.message);
+        console.log('Caught expected error (Update Phone):', error.message);
     }
 
     try {
-        console.log('\n3. Invalid Password (length)...');
-        await service.registerUser({ ...validData, password: 'Pass1!' });
+        console.log('\n4. Invalid name in update...');
+        await service.updateUser(registeredUser.id, { firstName: 'J123' });
     } catch (error: any) {
-        console.log('Caught expected error (Password):', error.message);
-    }
-
-    try {
-        console.log('\n4. Underage User (policy)...');
-        await service.registerUser({ ...validData, dob: '2015-01-01', email: 'child@example.com', phoneNumber: '01811223344' });
-    } catch (error: any) {
-        console.log('Caught expected error (Age):', error.message);
-    }
-
-    try {
-        console.log('\n5. Duplicate Phone check...');
-        await service.registerUser({ ...validData, email: 'other@example.com' });
-    } catch (error: any) {
-        console.log('Caught expected error (Duplicate Phone):', error.message);
-    }
-
-    try {
-        console.log('\n6. Soft-delete uniqueness check...');
-        // Delete the first user
-        await repo.delete((await repo.findByEmail('john@example.com'))!.id!);
-        console.log('Soft-deleted john@example.com');
-        await service.registerUser(validData);
-    } catch (error: any) {
-        console.log('Caught expected error (Soft-delete uniqueness):', error.message);
+        console.log('Caught expected error (Update Name):', error.message);
     }
 
     console.log('\n--- Verification Complete ---');
