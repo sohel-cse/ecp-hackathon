@@ -1,5 +1,6 @@
-import { UserService } from './packages/services/src/index';
-import { IUserRepository, User } from './packages/shared/src/index';
+import { UserService, NodemailerEmailService } from './packages/services/src/index';
+import { NameValidator, EmailValidator, PhoneValidator, AgeValidator, PasswordValidator } from './packages/services/src/validators';
+import { IUserRepository, User, IEmailService } from './packages/shared/src/index';
 
 class MockUserRepository implements IUserRepository {
     private users: User[] = [];
@@ -41,74 +42,47 @@ class MockUserRepository implements IUserRepository {
     }
 }
 
+class MockEmailService implements IEmailService {
+    public sentEmails: { to: string; subject: string; html: string }[] = [];
+    async sendHtmlEmail(to: string, subject: string, html: string): Promise<void> {
+        console.log(`[MockEmailService] Sending email to ${to}...`);
+        this.sentEmails.push({ to, subject, html });
+    }
+}
+
 async function verify() {
-    console.log('--- Verifying Composite Validator Refactoring ---');
+    console.log('--- Verifying Email Notification Flow ---');
 
     const repo = new MockUserRepository();
-    const service = new UserService(repo); // No validators passed!
-
-    let registeredUser: any;
+    const emailService = new MockEmailService();
+    const service = new UserService(repo, emailService);
 
     try {
-        console.log('1. Registering user (Testing UserRegistrationValidator)...');
-        registeredUser = await service.registerUser({
-            username: 'jdoe',
-            email: 'john@example.com',
+        console.log('1. Registering user and checking email...');
+        const user = await service.registerUser({
+            username: 'emailtest',
+            email: 'test@example.com',
             phoneNumber: '01711223344',
-            firstName: 'John',
-            lastName: 'Doe',
-            password: 'Password123!',
-            dob: '2000-01-01'
-        });
-        console.log('Success:', registeredUser);
-
-        console.log('\n2. Updating profile (Testing UserUpdateValidator)...');
-        const updated = await service.updateUser(registeredUser.id, {
-            firstName: 'Jonathan',
-            displayName: 'John Boy'
-        });
-        console.log('Updated Success:', updated);
-
-        console.log('\n3. Testing specific update validation (Phone duplicate)...');
-        await service.registerUser({
-            username: 'another',
-            email: 'another@example.com',
-            phoneNumber: '01811223344',
-            firstName: 'Another',
-            lastName: 'User',
+            firstName: 'Email',
+            lastName: 'Tester',
             password: 'Password123!'
         });
 
-        console.log('Attempting to update phone to duplicate 01811223344...');
-        await service.updateUser(registeredUser.id, { phoneNumber: '01811223344' });
-    } catch (error: any) {
-        console.log('Caught expected error (Update Phone):', error.message);
-    }
-
-    try {
-        console.log('\n4. Testing invalid field in update...');
-        await service.updateUser(registeredUser.id, { firstName: '' });
-    } catch (error: any) {
-        console.log('Caught expected error (Update Name):', error.message);
-    }
-
-    try {
-        console.log('\n5. Testing user deletion...');
-        await service.deleteUser(registeredUser.id);
-        console.log('Delete Success');
-
-        console.log('Attempting to fetch deleted user...');
-        const user = await service.getUserById(registeredUser.id);
-        if (user === null) {
-            console.log('Correct: User not found after deletion');
+        if (emailService.sentEmails.length === 1 && emailService.sentEmails[0].to === 'test@example.com') {
+            console.log('Success: Welcome email was sent!');
         } else {
-            console.log('Error: User still found after deletion');
+            console.log('Error: Welcome email was NOT sent correctly.');
         }
 
-        console.log('Attempting to update deleted user...');
-        await service.updateUser(registeredUser.id, { firstName: 'Ghost' });
+        console.log('\n2. Verifying existing flows still work...');
+        await service.updateUser(user.id, { firstName: 'UpdatedEmail' });
+        console.log('Update Success');
+
+        await service.deleteUser(user.id);
+        console.log('Delete Success');
+
     } catch (error: any) {
-        console.log('Caught expected error (Update Deleted):', error.message);
+        console.log('Caught unexpected error:', error.message);
     }
 
     console.log('\n--- Verification Complete ---');

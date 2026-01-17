@@ -8,9 +8,11 @@
     },
     "dependencies": {
         "@user-mgmt/shared": "*",
-        "bcrypt": "^6.0.0"
+        "bcrypt": "^6.0.0",
+        "nodemailer": "^7.0.12"
     },
     "devDependencies": {
-        "@types/bcrypt": "^6.0.0"
+        "@types/bcrypt": "^6.0.0",
+        "@types/nodemailer": "^7.0.5"
     }
 }

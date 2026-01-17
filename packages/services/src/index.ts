@@ -5,7 +5,8 @@ import {
     RegisterUserRequestDto,
     UpdateUserRequestDto,
     UserResponseDto,
-    User
+    User,
+    IEmailService
 } from '@user-mgmt/shared';
 import { UserRegistrationValidator, UserUpdateValidator } from './validators';
 
@@ -13,7 +14,10 @@ export class UserService implements IUserService {
     private registrationValidator: UserRegistrationValidator;
     private updateValidator: UserUpdateValidator;
 
-    constructor(private userRepository: IUserRepository) {
+    constructor(
+        private userRepository: IUserRepository,
+        private emailService: IEmailService
+    ) {
         this.registrationValidator = new UserRegistrationValidator(userRepository);
         this.updateValidator = new UserUpdateValidator(userRepository);
     }
@@ -48,6 +52,17 @@ export class UserService implements IUserService {
         };
 
         const createdUser = await this.userRepository.create(user);
+
+        // 5. Send Welcome Email (Non-blocking or awaited based on choice)
+        try {
+            await this.emailService.sendHtmlEmail(
+                createdUser.email,
+                'Welcome to User Management!',
+                `<h1>Welcome, ${createdUser.firstName}!</h1><p>Your account has been successfully created.</p>`
+            );
+        } catch (error) {
+            console.error('Registration succeeded but email failed:', error);
+        }
 
         return this.mapToResponse(createdUser);
     }
@@ -137,3 +152,4 @@ export class UserService implements IUserService {
 }
 
 export * from './validators';
+export * from './email.service';

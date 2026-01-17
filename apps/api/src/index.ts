@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
 import { MongoClient } from 'mongodb';
 import { MongoUserRepository } from '@user-mgmt/repository';
-import { UserService } from '@user-mgmt/services';
+import { UserService, NodemailerEmailService } from '@user-mgmt/services';
 import { RegisterUserRequestDto, UpdateUserRequestDto } from '@user-mgmt/shared';
 
 const app = express();
@@ -18,7 +18,8 @@ async function bootstrap() {
 
         // Dependency Injection
         const userRepository = new MongoUserRepository(db);
-        const userService = new UserService(userRepository);
+        const emailService = new NodemailerEmailService();
+        const userService = new UserService(userRepository, emailService);
 
         // Endpoints
         app.post('/api/users/register', async (req: Request, res: Response) => {

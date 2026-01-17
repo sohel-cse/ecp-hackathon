@@ -73,3 +73,8 @@ export interface IUserService {
 export interface IValidator<T> {
     validate(data: T): void | Promise<void>;
 }
+
+// Email Service Interface
+export interface IEmailService {
+    sendHtmlEmail(to: string, subject: string, html: string): Promise<void>;
+}
