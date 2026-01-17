@@ -5,6 +5,9 @@ export declare class UserService implements IUserService {
     registerUser(request: RegisterUserRequestDto): Promise<UserResponseDto>;
     getUserById(id: string): Promise<UserResponseDto | null>;
     toggleUserStatus(id: string): Promise<boolean>;
-    private hashPassword;
+    private normalizePhone;
+    private validateName;
+    private validateAge;
+    private validatePassword;
     private mapToResponse;
 }

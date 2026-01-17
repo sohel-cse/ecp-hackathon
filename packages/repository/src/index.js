@@ -17,13 +17,21 @@ class MongoUserRepository {
         return this.mapToUser(user);
     }
     async findByEmail(email) {
-        const user = await this.collection.findOne({ email });
+        // Uniqueness check must include soft-deleted users
+        const user = await this.collection.findOne({ email: { $regex: new RegExp(`^${email}$`, 'i') } });
+        if (!user)
+            return null;
+        return this.mapToUser(user);
+    }
+    async findByPhoneNumber(phoneNumber) {
+        // Uniqueness check must include soft-deleted users
+        const user = await this.collection.findOne({ phoneNumber });
         if (!user)
             return null;
         return this.mapToUser(user);
     }
     async findAll() {
-        const users = await this.collection.find().toArray();
+        const users = await this.collection.find({ isDeleted: false }).toArray();
         return users.map(u => this.mapToUser(u));
     }
     async update(id, item) {
@@ -31,8 +39,9 @@ class MongoUserRepository {
         return result.modifiedCount > 0;
     }
     async delete(id) {
-        const result = await this.collection.deleteOne({ _id: new mongodb_1.ObjectId(id) });
-        return result.deletedCount > 0;
+        // Soft delete implementation
+        const result = await this.collection.updateOne({ _id: new mongodb_1.ObjectId(id) }, { $set: { isDeleted: true, isEnabled: false } });
+        return result.modifiedCount > 0;
     }
     mapToUser(mongoUser) {
         const { _id, ...rest } = mongoUser;

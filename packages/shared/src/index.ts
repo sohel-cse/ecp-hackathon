@@ -3,8 +3,14 @@ export interface User {
     id?: string;
     username: string;
     email: string;
+    phoneNumber?: string;
+    firstName: string;
+    lastName: string;
+    dob?: Date;
+    displayName?: string;
     passwordHash: string;
     isEnabled: boolean;
+    isDeleted: boolean; // For soft-delete awareness
     createdAt: Date;
 }
 
@@ -12,13 +18,21 @@ export interface User {
 export interface RegisterUserRequestDto {
     username: string;
     email: string;
+    phoneNumber?: string;
     password: string;
+    firstName: string;
+    lastName: string;
+    dob?: string; // ISO string
+    displayName?: string;
 }
 
 export interface UserResponseDto {
     id: string;
     username: string;
     email: string;
+    phoneNumber?: string;
+    firstName: string;
+    lastName: string;
     isEnabled: boolean;
 }
 
@@ -34,6 +48,7 @@ export interface IRepository<T> {
 // User Repository Interface
 export interface IUserRepository extends IRepository<User> {
     findByEmail(email: string): Promise<User | null>;
+    findByPhoneNumber(phoneNumber: string): Promise<User | null>;
 }
 
 // User Service Interface

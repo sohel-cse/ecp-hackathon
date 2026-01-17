@@ -7,6 +7,10 @@
         "build": "tsc"
     },
     "dependencies": {
-        "@user-mgmt/shared": "*"
+        "@user-mgmt/shared": "*",
+        "bcrypt": "^6.0.0"
+    },
+    "devDependencies": {
+        "@types/bcrypt": "^6.0.0"
     }
 }

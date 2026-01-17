@@ -6,6 +6,7 @@ export declare class MongoUserRepository implements IUserRepository {
     create(user: User): Promise<User>;
     findById(id: string): Promise<User | null>;
     findByEmail(email: string): Promise<User | null>;
+    findByPhoneNumber(phoneNumber: string): Promise<User | null>;
     findAll(): Promise<User[]>;
     update(id: string, item: Partial<User>): Promise<boolean>;
     delete(id: string): Promise<boolean>;

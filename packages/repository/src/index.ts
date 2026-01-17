@@ -20,13 +20,21 @@ export class MongoUserRepository implements IUserRepository {
     }
 
     async findByEmail(email: string): Promise<User | null> {
-        const user = await this.collection.findOne({ email });
+        // Uniqueness check must include soft-deleted users
+        const user = await this.collection.findOne({ email: { $regex: new RegExp(`^${email}$`, 'i') } });
+        if (!user) return null;
+        return this.mapToUser(user);
+    }
+
+    async findByPhoneNumber(phoneNumber: string): Promise<User | null> {
+        // Uniqueness check must include soft-deleted users
+        const user = await this.collection.findOne({ phoneNumber });
         if (!user) return null;
         return this.mapToUser(user);
     }
 
     async findAll(): Promise<User[]> {
-        const users = await this.collection.find().toArray();
+        const users = await this.collection.find({ isDeleted: false }).toArray();
         return users.map(u => this.mapToUser(u));
     }
 
@@ -39,8 +47,12 @@ export class MongoUserRepository implements IUserRepository {
     }
 
     async delete(id: string): Promise<boolean> {
-        const result = await this.collection.deleteOne({ _id: new ObjectId(id) } as any);
-        return result.deletedCount > 0;
+        // Soft delete implementation
+        const result = await this.collection.updateOne(
+            { _id: new ObjectId(id) } as any,
+            { $set: { isDeleted: true, isEnabled: false } }
+        );
+        return result.modifiedCount > 0;
     }
 
     private mapToUser(mongoUser: any): User {

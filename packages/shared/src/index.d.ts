@@ -2,19 +2,33 @@ export interface User {
     id?: string;
     username: string;
     email: string;
+    phoneNumber?: string;
+    firstName: string;
+    lastName: string;
+    dob?: Date;
+    displayName?: string;
     passwordHash: string;
     isEnabled: boolean;
+    isDeleted: boolean;
     createdAt: Date;
 }
 export interface RegisterUserRequestDto {
     username: string;
     email: string;
+    phoneNumber?: string;
     password: string;
+    firstName: string;
+    lastName: string;
+    dob?: string;
+    displayName?: string;
 }
 export interface UserResponseDto {
     id: string;
     username: string;
     email: string;
+    phoneNumber?: string;
+    firstName: string;
+    lastName: string;
     isEnabled: boolean;
 }
 export interface IRepository<T> {
@@ -26,6 +40,7 @@ export interface IRepository<T> {
 }
 export interface IUserRepository extends IRepository<User> {
     findByEmail(email: string): Promise<User | null>;
+    findByPhoneNumber(phoneNumber: string): Promise<User | null>;
 }
 export interface IUserService {
     registerUser(request: RegisterUserRequestDto): Promise<UserResponseDto>;
