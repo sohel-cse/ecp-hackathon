@@ -1,0 +1,28 @@
+{
+    "compilerOptions": {
+        "target": "ES2020",
+        "module": "CommonJS",
+        "declaration": true,
+        "outDir": "./dist",
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "baseUrl": ".",
+        "paths": {
+            "@user-mgmt/shared": [
+                "packages/shared/src/index.ts"
+            ],
+            "@user-mgmt/repository": [
+                "packages/repository/src/index.ts"
+            ],
+            "@user-mgmt/services": [
+                "packages/services/src/index.ts"
+            ]
+        }
+    },
+    "exclude": [
+        "node_modules",
+        "**/dist"
+    ]
+}

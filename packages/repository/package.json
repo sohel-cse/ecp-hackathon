@@ -1,0 +1,13 @@
+{
+    "name": "@user-mgmt/repository",
+    "version": "1.0.0",
+    "private": true,
+    "main": "dist/index.js",
+    "scripts": {
+        "build": "tsc"
+    },
+    "dependencies": {
+        "@user-mgmt/shared": "*",
+        "mongodb": "^6.3.0"
+    }
+}

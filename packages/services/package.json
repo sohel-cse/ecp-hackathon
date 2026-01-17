@@ -1,0 +1,18 @@
+{
+    "name": "@user-mgmt/services",
+    "version": "1.0.0",
+    "private": true,
+    "main": "dist/index.js",
+    "scripts": {
+        "build": "tsc"
+    },
+    "dependencies": {
+        "@user-mgmt/shared": "*",
+        "bcrypt": "^6.0.0",
+        "nodemailer": "^7.0.12"
+    },
+    "devDependencies": {
+        "@types/bcrypt": "^6.0.0",
+        "@types/nodemailer": "^7.0.5"
+    }
+}
